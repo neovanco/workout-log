@@ -86,12 +86,25 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#2ec4b6}
 .section.show{display:block}
 .menu .item{display:block;width:100%;text-align:left;background:#1a1d24;border:1px solid #2a2e37;color:#e8eaed;border-radius:12px;padding:14px;font-size:15px;margin-bottom:8px}
 .menu p{color:#8b909a;font-size:13px}
+.menu h3{font-size:15px;margin:22px 0 10px;padding-top:14px;border-top:1px solid #22252c}
+.menu h3:first-child{margin-top:4px;padding-top:0;border-top:none}
+.trow{display:flex;align-items:center;gap:8px;background:#1a1d24;border:1px solid #2a2e37;border-radius:11px;padding:8px 10px;margin-bottom:6px}
+.trow i{width:12px;height:12px;border-radius:50%;flex:0 0 12px}
+.trow .tn{flex:1;font-weight:700}
+.trow .tk{font-size:12px;color:#8b909a}
+.mini{width:30px;height:30px;background:#12151b;border:1px solid #2a2e37;color:#aab;border-radius:8px;font-size:14px;padding:0;display:inline-block}
+span.mini{background:none;border:none}
+.mini.x{color:#ff6b6b}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.tag{display:inline-flex;align-items:center;gap:4px;background:#1a1d24;border:1px solid #2a2e37;border-radius:16px;padding:5px 6px 5px 11px;font-size:13px}
+.tag button{background:none;border:none;color:#ff6b6b;font-size:13px;padding:0 4px}
+.addbtn{flex:0 0 70px!important;background:#2ec4b6;color:#0f1115;border:none;border-radius:11px;font-weight:800;font-size:15px}
 </style>
 </head>
 <body>
 <header>
   <h1>운동 기록장</h1>
-  <button class="menu-btn" id="menuBtn">백업</button>
+  <button class="menu-btn" id="menuBtn">⚙︎ 설정</button>
 </header>
 <div class="wrap">
   <div class="weeknav">
@@ -173,8 +186,24 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#2ec4b6}
 
 <!-- 백업 -->
 <div class="modal" id="menuModal">
-  <div class="mhead"><span style="width:40px"></span><b>백업 · 복원</b><button id="menuClose">닫기</button></div>
+  <div class="mhead"><span style="width:40px"></span><b>설정</b><button id="menuClose">닫기</button></div>
   <div class="form menu">
+    <h3>운동 종류</h3>
+    <div id="typeList"></div>
+    <div class="row" style="margin-top:8px"><input id="newType" placeholder="예: 수영, 케틀벨"><select id="newKind" style="flex:0 0 120px"><option value="basic">기본</option><option value="ex">세부운동</option><option value="dist">거리·기록</option></select></div>
+    <button class="addrow" id="addType" style="margin-top:8px">+ 운동 종류 추가</button>
+    <p class="hint">기본: 시간·강도·메모 (세부 운동 선택) · 세부운동: 운동명·세트·횟수·kg · 거리·기록: 거리·기록·페이스·심박·상승고도</p>
+
+    <h3>러닝 종류</h3>
+    <div class="tags" id="runKindList"></div>
+    <div class="row"><input id="newRunKind" placeholder="예: 언덕 반복, 빌드업"><button class="addbtn" id="addRunKind">추가</button></div>
+
+    <h3>운동명 목록</h3>
+    <div class="tags" id="exNameList"></div>
+    <div class="row"><input id="newExName" placeholder="예: 노르딕 컬"><button class="addbtn" id="addExName">추가</button></div>
+    <button class="item" id="resetCfg" style="margin-top:14px">↺ 항목을 처음 상태로 되돌리기</button>
+
+    <h3>백업</h3>
     <p>기록은 이 기기의 브라우저에 저장돼요. 가끔 백업 파일로 내보내 두면 안전해요.</p>
     <button class="item" id="exportBtn">📤 백업 파일 내보내기 (.json)</button>
     <button class="item" id="importBtn">📥 백업 파일 불러오기</button>
@@ -186,17 +215,19 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#2ec4b6}
 <script>
 (function(){
 var KEY='workoutLog_v1';
-var TYPES=['F45','HAC','PT','필라테스','달리기','트레일런닝','등산','보강운동','재활운동','기타'];
-var COLORS={'F45':'#ff5a5f','HAC':'#ffb020','PT':'#9b7bff','필라테스':'#ff7eb6','달리기':'#2ec4b6','트레일런닝':'#e07b39','등산':'#7cb342','보강운동':'#4d96ff','재활운동':'#80deea','기타':'#9aa0a6'};
-var OUTDOOR={'달리기':1,'트레일런닝':1,'등산':1};
-var KM_TYPES={'달리기':1,'트레일런닝':1};
-var EX_MAIN={'보강운동':1,'재활운동':1};
+var SKEY='workoutLog_settings_v1';
+var PALETTE=['#ff5a5f','#ffb020','#9b7bff','#ff7eb6','#2ec4b6','#e07b39','#7cb342','#4d96ff','#80deea','#c9a227','#f06292','#4db6ac','#ba68c8','#ffd54f','#a1887f','#90a4ae'];
+var KIND_LABEL={basic:'기본',ex:'세부운동',dist:'거리·기록'};
+var DEFAULT_TYPES=[{n:'F45',c:'#ff5a5f',k:'basic'},{n:'HAC',c:'#ffb020',k:'basic'},{n:'PT',c:'#9b7bff',k:'basic'},{n:'필라테스',c:'#ff7eb6',k:'basic'},{n:'달리기',c:'#2ec4b6',k:'dist'},{n:'트레일런닝',c:'#e07b39',k:'dist'},{n:'등산',c:'#7cb342',k:'dist'},{n:'보강운동',c:'#4d96ff',k:'ex'},{n:'재활운동',c:'#80deea',k:'ex'},{n:'불가리안백',c:'#c9a227',k:'ex'},{n:'클럽벨',c:'#f06292',k:'ex'},{n:'기타',c:'#9aa0a6',k:'basic'}];
 var OUT_HINT={
  '트레일런닝':'예: 코스/산 이름, 업힐 파워하이킹, 보급 젤 2개, 신발',
  '등산':'예: 산 이름, 코스(입구→정상→하산), 배낭 무게'
 };
-function isOut(t){return OUTDOOR.hasOwnProperty(t);}
-var RUNKINDS=['인터벌','조깅','템포런','LSD','회복주','기타'];
+var TYPES=[], COLORS={}, KINDS={};
+function isOut(t){return KINDS[t]==='dist';}
+function isExMain(t){return KINDS[t]==='ex';}
+function countsKm(x){return x.run&&x.type!=='등산';}
+var DEFAULT_RUNKINDS=['인터벌','조깅','템포런','LSD','회복주','기타'];
 var PLAN_HINT={
  '인터벌':'예: 1km × 6 @4:10 / 휴식 90초 조깅\n워밍업 2km, 쿨다운 2km',
  '조깅':'예: 편하게 Z2, 대화 가능한 페이스',
@@ -206,15 +237,22 @@ var PLAN_HINT={
  '기타':'예: 트레일, 언덕 반복, 빌드업'
 };
 var DAYS=['일','월','화','수','목','금','토'];
-var EXLIST=['플라이오메트릭','카프 레이즈','코삭 스쿼트','스쿼트','백 스쿼트','프론트 스쿼트','런지','워킹 런지','불가리안 스플릿 스쿼트','데드리프트','루마니안 데드리프트','싱글레그 데드리프트','힙쓰러스트','글루트 브릿지','싱글레그 카프 레이즈','스텝업','박스 점프','스키핑','바운딩','점프 스쿼트','플랭크','사이드 플랭크','데드버그','버드독','팔로프 프레스','푸시업','풀업','로우','케틀벨 스윙','케틀벨 고블릿 스쿼트','파머스 캐리','불가리안백','클럽벨','월볼','버피 브로드 점프','슬레드 푸시','슬레드 풀','로잉','스키에르그','샌드백 런지','폼롤러','스트레칭'];
+var DEFAULT_EX=['플라이오메트릭','카프 레이즈','코삭 스쿼트','스쿼트','백 스쿼트','프론트 스쿼트','런지','워킹 런지','불가리안 스플릿 스쿼트','데드리프트','루마니안 데드리프트','싱글레그 데드리프트','힙쓰러스트','글루트 브릿지','싱글레그 카프 레이즈','스텝업','박스 점프','스키핑','바운딩','점프 스쿼트','플랭크','사이드 플랭크','데드버그','버드독','팔로프 프레스','푸시업','풀업','로우','케틀벨 스윙','케틀벨 고블릿 스쿼트','파머스 캐리','불가리안백','클럽벨','월볼','버피 브로드 점프','슬레드 푸시','슬레드 풀','로잉','스키에르그','샌드백 런지','폼롤러','스트레칭'];
 
 var data=load();
+var cfg=loadCfg();applyCfg();
 var weekStart=mondayOf(new Date());
-var editId=null, curType='F45', curRun='인터벌', curRpe='';
+var editId=null, curType='', curRun='', curRpe='';
 
 function $(id){return document.getElementById(id);}
 function load(){try{var s=localStorage.getItem(KEY);var d=s?JSON.parse(s):[];if(Object.prototype.toString.call(d)!=='[object Array]')return [];for(var i=0;i<d.length;i++){if(d[i]&&d[i].type==='보조운동')d[i].type='보강운동';}return d;}catch(e){return [];}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){alert('저장에 실패했어요. 저장 공간을 확인해 주세요.');}}
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function defaultCfg(){return {types:clone(DEFAULT_TYPES),runKinds:DEFAULT_RUNKINDS.slice(),exNames:DEFAULT_EX.slice()};}
+function validCfg(c){return c&&Object.prototype.toString.call(c.types)==='[object Array]'&&c.types.length&&Object.prototype.toString.call(c.runKinds)==='[object Array]'&&Object.prototype.toString.call(c.exNames)==='[object Array]';}
+function loadCfg(){try{var c=JSON.parse(localStorage.getItem(SKEY)||'null');if(validCfg(c))return c;}catch(e){}return defaultCfg();}
+function saveCfg(){try{localStorage.setItem(SKEY,JSON.stringify(cfg));}catch(e){alert('설정 저장에 실패했어요.');}}
+function applyCfg(){TYPES=[];COLORS={};KINDS={};for(var i=0;i<cfg.types.length;i++){var t=cfg.types[i];TYPES.push(t.n);COLORS[t.n]=t.c;KINDS[t.n]=t.k;}}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function pad(n){return (n<10?'0':'')+n;}
 function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
@@ -242,12 +280,12 @@ function render(){
   var mins=0, km=0, cnt={}, days={};
   for(i=0;i<wk.length;i++){
     var x=wk[i]; mins+=num(x.dur); days[x.date]=1;
-    if(KM_TYPES[x.type]&&x.run)km+=num(x.run.dist);
+    if(countsKm(x))km+=num(x.run.dist);
     cnt[x.type]=(cnt[x.type]||0)+1;
   }
   var nd=0; for(var k in days)if(days.hasOwnProperty(k))nd++;
   var mStart=ymd(new Date(weekStart.getFullYear(),weekStart.getMonth(),1)).slice(0,7), mkm=0;
-  for(i=0;i<data.length;i++){if(KM_TYPES[data[i].type]&&data[i].run&&String(data[i].date).slice(0,7)===mStart)mkm+=num(data[i].run.dist);}
+  for(i=0;i<data.length;i++){if(countsKm(data[i])&&String(data[i].date).slice(0,7)===mStart)mkm+=num(data[i].run.dist);}
   var h='<div class="stats">'+
     '<div class="stat"><div class="v">'+wk.length+'</div><div class="l">세션 ('+nd+'일)</div></div>'+
     '<div class="stat"><div class="v">'+(mins>=60?Math.floor(mins/60)+'h '+(mins%60)+'m':mins+'m')+'</div><div class="l">운동 시간</div></div>'+
@@ -277,10 +315,10 @@ function cardHtml(x){
   var title=x.type==='기타'&&x.name?x.name:x.type;
   var h='<div class="card" data-id="'+esc(x.id)+'" style="border-left-color:'+c+'"><div class="top">'+
     '<span class="badge" style="background:'+c+'">'+esc(title)+'</span>';
-  if(x.type==='달리기'&&x.run&&x.run.kind)h+='<span class="sub">'+esc(x.run.kind)+'</span>';
+  if(x.run&&x.run.kind)h+='<span class="sub">'+esc(x.run.kind)+'</span>';
   h+='<span class="time">'+esc(x.time||'')+'</span></div>';
   var meta=[];
-  if(isOut(x.type)&&x.run){
+  if(x.run){
     var r=x.run, dist=num(r.dist), sec=toSec(r.time);
     if(dist)meta.push('<b>'+dist+'km</b>');
     if(sec)meta.push(fmtDur(sec));
@@ -291,7 +329,7 @@ function cardHtml(x){
   if(x.dur)meta.push(esc(x.dur)+'분');
   if(x.rpe)meta.push('RPE '+esc(x.rpe));
   if(meta.length)h+='<div class="meta"><span>'+meta.join('</span><span>')+'</span></div>';
-  if(isOut(x.type)&&x.run){
+  if(x.run){
     if(x.run.plan)h+='<div class="plan">'+esc(x.run.plan)+'</div>';
     if(x.run.laps&&x.run.laps.length){
       h+='<div class="lines">';
@@ -314,12 +352,14 @@ function cardHtml(x){
 }
 
 /* ---------- 입력 폼 ---------- */
-function buildChips(){
-  var h='',i;
-  for(i=0;i<TYPES.length;i++)h+='<button class="chip" data-type="'+TYPES[i]+'">'+TYPES[i]+'</button>';
+function buildChips(extraType,extraRun){
+  var h='',i,list=TYPES.slice(),rk=cfg.runKinds.slice();
+  if(extraType&&list.indexOf(extraType)<0)list.push(extraType);
+  if(extraRun&&rk.indexOf(extraRun)<0)rk.push(extraRun);
+  for(i=0;i<list.length;i++)h+='<button class="chip" data-type="'+esc(list[i])+'">'+esc(list[i])+'</button>';
   $('typeChips').innerHTML=h;
   h='';
-  for(i=0;i<RUNKINDS.length;i++)h+='<button class="chip" data-run="'+RUNKINDS[i]+'">'+RUNKINDS[i]+'</button>';
+  for(i=0;i<rk.length;i++)h+='<button class="chip" data-run="'+esc(rk[i])+'">'+esc(rk[i])+'</button>';
   $('runChips').innerHTML=h;
   h='';
   for(i=1;i<=10;i++)h+='<button data-rpe="'+i+'">'+i+'</button>';
@@ -328,20 +368,20 @@ function buildChips(){
 function setType(t){
   curType=t;
   var b=$('typeChips').getElementsByTagName('button');
-  for(var i=0;i<b.length;i++){var on=b[i].getAttribute('data-type')===t;b[i].className='chip'+(on?' on':'');b[i].style.background=on?COLORS[t]:'';}
+  for(var i=0;i<b.length;i++){var on=b[i].getAttribute('data-type')===t;b[i].className='chip'+(on?' on':'');b[i].style.background=on?(COLORS[t]||'#9aa0a6'):'';}
   $('runSec').className='section'+(isOut(t)?' show':'');
   $('runKindSec').className='section'+(t==='달리기'?' show':'');
   $('exSec').className='section'+(!isOut(t)?' show':'');
   $('nameSec').className='section'+(t==='기타'?' show':'');
-  $('exLbl').innerHTML=EX_MAIN[t]?'세부 운동':'세부 운동 (선택)';
-  if(EX_MAIN[t]&&!$('exRows').children.length)addEx();
+  $('exLbl').innerHTML=isExMain(t)?'세부 운동':'세부 운동 (선택)';
+  if(isExMain(t)&&!$('exRows').children.length)addEx();
   planHint();
 }
 function planHint(){$('rPlan').setAttribute('placeholder',curType==='달리기'?(PLAN_HINT[curRun]||''):(OUT_HINT[curType]||''));}
 function setRun(k){
   curRun=k;
   var b=$('runChips').getElementsByTagName('button');
-  for(var i=0;i<b.length;i++){var on=b[i].getAttribute('data-run')===k;b[i].className='chip'+(on?' on':'');b[i].style.background=on?COLORS['달리기']:'';}
+  for(var i=0;i<b.length;i++){var on=b[i].getAttribute('data-run')===k;b[i].className='chip'+(on?' on':'');b[i].style.background=on?(COLORS['달리기']||'#2ec4b6'):'';}
   planHint();
 }
 function setRpe(v){
@@ -370,8 +410,8 @@ function addLap(l){
 }
 function fillDatalist(){
   var seen={}, names=[], i, j;
+  var base=cfg.exNames;for(i=0;i<base.length;i++){if(!seen[base[i]]){seen[base[i]]=1;names.push(base[i]);}}
   for(i=0;i<data.length;i++){var ex=data[i].ex||[];for(j=0;j<ex.length;j++){if(ex[j].n&&!seen[ex[j].n]){seen[ex[j].n]=1;names.push(ex[j].n);}}}
-  for(i=0;i<EXLIST.length;i++){if(!seen[EXLIST[i]]){seen[EXLIST[i]]=1;names.push(EXLIST[i]);}}
   var h='';for(i=0;i<names.length;i++)h+='<option value="'+esc(names[i])+'">';
   $('exNames').innerHTML=h;
 }
@@ -391,13 +431,16 @@ function openForm(x,date){
   $('fDur').value=x&&x.dur||'';
   $('fMemo').value=x&&x.memo||'';
   var r=x&&x.run||{};
+  var ty=x?x.type:TYPES[0];
+  if(x&&!KINDS.hasOwnProperty(ty))KINDS[ty]=x.run?'dist':(x.ex?'ex':'basic');
+  buildChips(x?x.type:'',r.kind||'');
   $('rDist').value=r.dist||'';$('rTime').value=r.time||'';$('rHr').value=r.hr||'';$('rElev').value=r.elev||'';$('rPlan').value=r.plan||'';
   var i;
   if(r.laps)for(i=0;i<r.laps.length;i++)addLap(r.laps[i]);
   if(x&&x.ex)for(i=0;i<x.ex.length;i++)addEx(x.ex[i]);
-  setRun(r.kind||'인터벌');
+  setRun(r.kind||cfg.runKinds[0]||'');
   setRpe(x&&x.rpe||'');
-  setType(x?x.type:'F45');
+  setType(ty);
   updatePace();
   $('fDayName').innerHTML=dayName($('fDate').value);
   $('formModal').className='modal open';
@@ -439,7 +482,7 @@ function closestAttr(el,attr){while(el&&el!==document){if(el.getAttribute&&el.ge
 
 /* ---------- 백업 ---------- */
 function exportData(){
-  var blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({app:'workout-log',records:data,settings:cfg},null,1)],{type:'application/json'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');a.href=url;a.download='workout-log-'+ymd(new Date())+'.json';
   document.body.appendChild(a);a.click();
@@ -449,14 +492,43 @@ function importData(file){
   var fr=new FileReader();
   fr.onload=function(){
     try{
-      var arr=JSON.parse(fr.result);
-      if(Object.prototype.toString.call(arr)!=='[object Array]')throw 0;
+      var obj=JSON.parse(fr.result),arr=obj;
+      if(Object.prototype.toString.call(obj)!=='[object Array]'){
+        if(!obj||Object.prototype.toString.call(obj.records)!=='[object Array]')throw 0;
+        arr=obj.records;
+        if(validCfg(obj.settings)&&confirm('백업 파일의 항목 설정(운동 종류·운동명)도 불러올까요?')){cfg=obj.settings;saveCfg();applyCfg();buildChips();renderCfg();}
+      }
       var ids={},i,add=0;for(i=0;i<data.length;i++)ids[data[i].id]=i;
       for(i=0;i<arr.length;i++){if(!arr[i]||!arr[i].date)continue;if(arr[i].type==='보조운동')arr[i].type='보강운동';if(ids.hasOwnProperty(arr[i].id))data[ids[arr[i].id]]=arr[i];else{data.push(arr[i]);add++;}}
       save();render();menuInfo();alert('불러오기 완료 (새 기록 '+add+'개)');
     }catch(e){alert('백업 파일을 읽지 못했어요.');}
   };
   fr.readAsText(file);
+}
+/* ---------- 항목 관리 ---------- */
+function trim(v){return String(v||'').replace(/^\s+|\s+$/g,'');}
+function nextColor(){var used={},i;for(i=0;i<cfg.types.length;i++)used[cfg.types[i].c]=1;for(i=0;i<PALETTE.length;i++)if(!used[PALETTE[i]])return PALETTE[i];return PALETTE[cfg.types.length%PALETTE.length];}
+function renderCfg(){
+  var h='',i,t;
+  for(i=0;i<cfg.types.length;i++){t=cfg.types[i];
+    h+='<div class="trow"><i style="background:'+t.c+'"></i><span class="tn">'+esc(t.n)+'</span><span class="tk">'+KIND_LABEL[t.k]+'</span>'+
+      (i?'<button class="mini" data-uptype="'+i+'">↑</button>':'<span class="mini"></span>')+'<button class="mini x" data-rmtype="'+i+'">✕</button></div>';}
+  $('typeList').innerHTML=h;
+  h='';for(i=0;i<cfg.runKinds.length;i++)h+='<span class="tag">'+esc(cfg.runKinds[i])+'<button data-rmrun="'+i+'">✕</button></span>';
+  $('runKindList').innerHTML=h||'<span class="hint">없음</span>';
+  h='';for(i=0;i<cfg.exNames.length;i++)h+='<span class="tag">'+esc(cfg.exNames[i])+'<button data-rmex="'+i+'">✕</button></span>';
+  $('exNameList').innerHTML=h||'<span class="hint">없음</span>';
+}
+function cfgChanged(){saveCfg();applyCfg();buildChips();renderCfg();render();}
+function addType(){
+  var n=trim($('newType').value);if(!n)return;
+  if(KINDS.hasOwnProperty(n)&&TYPES.indexOf(n)>=0){alert('이미 있는 운동 종류예요.');return;}
+  cfg.types.push({n:n,c:nextColor(),k:$('newKind').value});$('newType').value='';cfgChanged();
+}
+function addListItem(listName,inputId){
+  var n=trim($(inputId).value);if(!n)return;
+  if(cfg[listName].indexOf(n)>=0){alert('이미 목록에 있어요.');return;}
+  cfg[listName].push(n);$(inputId).value='';cfgChanged();
 }
 function menuInfo(){$('countInfo').innerHTML='저장된 기록: 총 '+data.length+'개';}
 
@@ -487,7 +559,20 @@ $('list').onclick=function(ev){
   var c=closestAttr(ev.target,'data-id');
   if(c){var x=findById(c.getAttribute('data-id'));if(x)openForm(x);}
 };
-$('menuBtn').onclick=function(){menuInfo();$('menuModal').className='modal open';};
+$('addType').onclick=addType;
+$('addRunKind').onclick=function(){addListItem('runKinds','newRunKind');};
+$('addExName').onclick=function(){addListItem('exNames','newExName');};
+$('resetCfg').onclick=function(){if(confirm('운동 종류·러닝 종류·운동명 목록을 처음 상태로 되돌릴까요? (기록은 그대로예요)')){cfg=defaultCfg();cfgChanged();}};
+$('menuModal').onclick=function(ev){
+  var b,i;
+  if((b=closestAttr(ev.target,'data-rmtype'))){i=+b.getAttribute('data-rmtype');
+    if(cfg.types.length<=1){alert('운동 종류는 하나 이상 있어야 해요.');return;}
+    if(confirm('"'+cfg.types[i].n+'"을(를) 운동 종류에서 뺄까요? 이미 저장된 기록은 그대로 남아요.')){cfg.types.splice(i,1);cfgChanged();}}
+  else if((b=closestAttr(ev.target,'data-uptype'))){i=+b.getAttribute('data-uptype');var t=cfg.types[i];cfg.types[i]=cfg.types[i-1];cfg.types[i-1]=t;cfgChanged();}
+  else if((b=closestAttr(ev.target,'data-rmrun'))){i=+b.getAttribute('data-rmrun');cfg.runKinds.splice(i,1);cfgChanged();}
+  else if((b=closestAttr(ev.target,'data-rmex'))){i=+b.getAttribute('data-rmex');cfg.exNames.splice(i,1);cfgChanged();}
+};
+$('menuBtn').onclick=function(){menuInfo();renderCfg();$('menuModal').className='modal open';};
 $('menuClose').onclick=function(){$('menuModal').className='modal';};
 $('exportBtn').onclick=exportData;
 $('importBtn').onclick=function(){$('importFile').click();};
